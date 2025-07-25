@@ -1,13 +1,17 @@
+# render.yaml - Complete Render deployment configuration
 services:
+  # Main UPI Gateway Service
   - type: web
     name: ritwik-upi-gateway
-    env: node
+    runtime: node
     region: singapore
     plan: free
+    branch: main
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
     
+    # Environment Variables
     envVars:
       - key: NODE_ENV
         value: production
@@ -22,20 +26,67 @@ services:
       - key: ADMIN_USERNAME
         value: ritwik
       - key: ADMIN_PASSWORD
-        value: Ritwik@2025#Secure
+        generateValue: true
       - key: SESSION_SECRET
         generateValue: true
-      - key: JWT_SECRET
+      - key: WEBHOOK_SECRET
         generateValue: true
+      - key: AUTO_VERIFY_DELAY
+        value: 30000
+      - key: QR_CODE_SIZE
+        value: 256
+      - key: PAYMENT_TIMEOUT
+        value: 600000
     
+    # Auto deployment
     autoDeploy: true
     
+    # Persistent disk for payment data
     disk:
-      name: ritwik-payment-data
+      name: payment-storage
       mountPath: /opt/render/project/src/data
       sizeGB: 1
 
-# Custom domain (optional)
+  # Background worker for auto-verification
+  - type: worker
+    name: payment-verifier
+    runtime: node
+    region: singapore
+    plan: free
+    branch: main
+    buildCommand: npm install
+    startCommand: node worker.js
+    
+    envVars:
+      - fromService:
+          type: web
+          name: ritwik-upi-gateway
+          envVarKey: NODE_ENV
+      - fromService:
+          type: web
+          name: ritwik-upi-gateway
+          envVarKey: UPI_ID
+      - fromService:
+          type: web
+          name: ritwik-upi-gateway
+          envVarKey: AUTO_VERIFY_DELAY
+
+# Database (Optional - for future scaling)
+databases:
+  - name: upi-payments-db
+    databaseName: payments
+    user: ritwik_admin
+    region: singapore
+    plan: free
+
+# Static site for documentation
+  - type: static
+    name: upi-docs
+    buildCommand: echo "Documentation ready"
+    publishPath: ./docs
+    pullRequestPreviewsEnabled: false
+
+# Custom domains
 customDomains:
-  - name: ritwik-upi.onrender.com
-  
+  - name: ritwik-pay.onrender.com
+  - name: upi-gateway.onrender.com
