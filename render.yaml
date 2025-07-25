@@ -1,0 +1,65 @@
+# Render.com deployment configuration for UPI Payment Gateway
+services:
+  # Main web service
+  - type: web
+    name: upi-payment-gateway
+    env: node
+    region: singapore
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
+    
+    # Environment variables
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: UPI_ID
+        value: yourupi@upi
+      - key: MERCHANT_NAME
+        value: YourShop
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        generateValue: true  # Auto-generate secure password
+    
+    # Auto-deploy on git push
+    autoDeploy: true
+    
+    # Disk storage for payments.json
+    disk:
+      name: payment-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
+
+# Optional: Static site for documentation
+  - type: static
+    name: upi-gateway-docs
+    buildCommand: echo "Documentation ready"
+    publishPath: ./docs
+    pullRequestPreviewsEnabled: true
+
+# Database service (optional upgrade from file storage)
+databases:
+  - name: upi-payments-db
+    databaseName: upi_payments
+    user: upi_admin
+    plan: free
+    region: singapore
+    
+# Background jobs service (for future enhancements)
+  - type: worker
+    name: payment-processor
+    env: node
+    buildCommand: npm install
+    startCommand: node worker.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - fromService:
+          type: web
+          name: upi-payment-gateway
+          envVarKey: DATABASE_URL
+          
