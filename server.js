@@ -6,104 +6,65 @@ const path = require('path');
 const QRCode = require('qrcode');
 const helmet = require('helmet');
 const compression = require('compression');
-const rateLimit = require('express-rate-limit');
-const { body, validationResult } = require('express-validator');
-const { v4: uuidv4 } = require('uuid');
-const moment = require('moment');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Enhanced security and performance
+// Security and performance
 app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            scriptSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'"]
-        }
-    },
+    contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false
 }));
+app.use(compression());
 
-app.use(compression({
-    level: 6,
-    threshold: 1024
-}));
-
-// Rate limiting
-const limiter = rateLimit({
-    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW) || 15 * 60 * 1000,
-    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
-    message: {
-        error: 'Too many requests, please try again later.'
-    }
-});
-
-app.use('/api/', limiter);
-
-// Enhanced CORS for Render
+// CORS configuration
 const corsOptions = {
     origin: [
         process.env.RENDER_EXTERNAL_URL,
         'https://upi-n9wg.onrender.com',
-        'https://ritwik-pay.onrender.com',
         'http://localhost:3000',
         'http://localhost:10000'
     ].filter(Boolean),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-    optionsSuccessStatus: 200
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 };
 
 app.use(cors(corsOptions));
 
-// Body parsing with larger limits
-app.use(bodyParser.json({ limit: '50mb' }));
-app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
+// Body parsing
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
-// Static files with caching
-app.use(express.static('public', {
-    maxAge: '1d',
-    etag: true
-}));
+// Static files
+app.use(express.static('public'));
 
-// Trust proxy for Render
+// Trust proxy
 app.set('trust proxy', 1);
 
-// Configuration from environment
+// Configuration
 const CONFIG = {
     upiId: process.env.UPI_ID || '7477772650@ibl',
     merchantName: process.env.MERCHANT_NAME || 'Ritwik Store',
     businessName: process.env.BUSINESS_NAME || 'Ritwik Jana',
-    merchantCode: process.env.MERCHANT_CODE || 'RITWIK001',
     adminUsername: process.env.ADMIN_USERNAME || 'ritwik',
-    adminPassword: process.env.ADMIN_PASSWORD || 'Ritwik@2025#SecureAdmin',
-    autoVerifyEnabled: process.env.AUTO_VERIFY_ENABLED === 'true',
-    autoVerifyDelay: parseInt(process.env.AUTO_VERIFY_DELAY) || 30000,
-    paymentTimeout: parseInt(process.env.PAYMENT_TIMEOUT) || 600000,
-    qrCodeSize: parseInt(process.env.QR_CODE_SIZE) || 256
+    adminPassword: process.env.ADMIN_PASSWORD || 'Ritwik@2025#Secure'
 };
 
-// Data storage setup
+// Data storage
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const PAYMENTS_FILE = path.join(DATA_DIR, 'payments.json');
-const LOGS_FILE = path.join(DATA_DIR, 'gateway.log');
 
-// Ensure data directory exists
+// Ensure directories exist
 if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// Initialize payments file
 if (!fs.existsSync(PAYMENTS_FILE)) {
     fs.writeFileSync(PAYMENTS_FILE, JSON.stringify([], null, 2));
 }
 
-// Enhanced helper functions
+// Helper functions
 function loadPayments() {
     try {
         const data = fs.readFileSync(PAYMENTS_FILE, 'utf8');
@@ -116,26 +77,7 @@ function loadPayments() {
 
 function savePayments(payments) {
     try {
-        // Create backup
-        const backupFile = path.join(DATA_DIR, `payments_backup_${Date.now()}.json`);
-        if (fs.existsSync(PAYMENTS_FILE)) {
-            fs.copyFileSync(PAYMENTS_FILE, backupFile);
-        }
-        
         fs.writeFileSync(PAYMENTS_FILE, JSON.stringify(payments, null, 2));
-        
-        // Clean old backups (keep last 5)
-        const backupFiles = fs.readdirSync(DATA_DIR)
-            .filter(file => file.startsWith('payments_backup_'))
-            .sort()
-            .reverse();
-        
-        if (backupFiles.length > 5) {
-            backupFiles.slice(5).forEach(file => {
-                fs.unlinkSync(path.join(DATA_DIR, file));
-            });
-        }
-        
         return true;
     } catch (error) {
         console.error('Error saving payments:', error);
@@ -144,107 +86,55 @@ function savePayments(payments) {
 }
 
 function generateOrderId() {
-    const timestamp = moment().format('YYYYMMDD_HHmmss');
-    const uuid = uuidv4().split('-')[0].toUpperCase();
-    return `${CONFIG.merchantCode}_${timestamp}_${uuid}`;
+    const now = new Date();
+    const timestamp = now.toISOString().replace(/[-:T.]/g, '').slice(0, 14);
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `ORD_${timestamp}_${random}`;
 }
 
 function generateUPILink(amount, orderId) {
-    const params = new URLSearchParams({
-        pa: CONFIG.upiId,
-        pn: CONFIG.merchantName,
-        am: amount.toString(),
-        tr: orderId,
-        cu: 'INR',
-        tn: `Payment to ${CONFIG.businessName} - Order ${orderId}`
-    });
-    
-    return `upi://pay?${params.toString()}`;
+    return `upi://pay?pa=${CONFIG.upiId}&pn=${CONFIG.merchantName}&am=${amount}&tr=${orderId}&cu=INR&tn=Payment to ${CONFIG.businessName}`;
 }
 
-function logActivity(level, message, data = {}) {
-    const logEntry = {
-        timestamp: moment().toISOString(),
-        level,
-        message,
-        data,
-        service: 'upi-gateway'
-    };
-    
-    console.log(JSON.stringify(logEntry));
-    
-    // Write to log file
-    try {
-        fs.appendFileSync(LOGS_FILE, JSON.stringify(logEntry) + '\n');
-    } catch (error) {
-        console.error('Failed to write to log file:', error);
-    }
-}
-
-// Auto-verification function
+// Auto-verification simulation
 function scheduleAutoVerification(orderId) {
-    if (!CONFIG.autoVerifyEnabled) return;
-    
     setTimeout(async () => {
         try {
             const payments = loadPayments();
-            const payment = payments.find(p => p.orderId === orderId);
+            const paymentIndex = payments.findIndex(p => p.orderId === orderId);
             
-            if (payment && payment.status === 'pending') {
-                // Simulate verification check (in real scenario, check with bank API/SMS)
-                const shouldVerify = Math.random() > 0.7; // 30% auto-verify for demo
-                
-                if (shouldVerify) {
-                    payment.status = 'paid';
-                    payment.verifiedAt = moment().toISOString();
-                    payment.verificationMethod = 'auto';
-                    payment.utr = `AUTO_${Date.now()}`;
+            if (paymentIndex !== -1 && payments[paymentIndex].status === 'pending') {
+                // 40% chance of auto-verification (simulation)
+                if (Math.random() > 0.6) {
+                    payments[paymentIndex].status = 'paid';
+                    payments[paymentIndex].verifiedAt = new Date().toISOString();
+                    payments[paymentIndex].verificationMethod = 'auto';
+                    payments[paymentIndex].utr = `AUTO_${Date.now()}`;
                     
                     savePayments(payments);
-                    
-                    logActivity('info', 'Payment auto-verified', {
-                        orderId,
-                        amount: payment.amount
-                    });
+                    console.log(`Auto-verified payment: ${orderId}`);
                 }
             }
         } catch (error) {
-            logActivity('error', 'Auto-verification failed', { orderId, error: error.message });
+            console.error('Auto-verification error:', error);
         }
-    }, CONFIG.autoVerifyDelay);
+    }, 30000); // 30 seconds delay
 }
 
-// Enhanced validation middleware
-const validateCreateOrder = [
-    body('amount').isFloat({ min: 1, max: 100000 }).withMessage('Amount must be between ₹1 and ₹100,000'),
-    body('customerName').optional().isLength({ max: 100 }).withMessage('Name too long'),
-    body('customerEmail').optional().isEmail().withMessage('Invalid email format')
-];
+// Routes
 
-const validateVerifyPayment = [
-    body('orderId').notEmpty().withMessage('Order ID is required'),
-    body('utr').isLength({ min: 8, max: 50 }).withMessage('Invalid UTR format')
-];
-
-// API Routes
-
-// Enhanced health check
+// Health check
 app.get('/health', (req, res) => {
-    const health = {
+    res.status(200).json({
         status: 'OK',
-        timestamp: moment().toISOString(),
+        timestamp: new Date().toISOString(),
         service: 'ritwik-upi-gateway',
         version: '3.0.0',
-        uptime: process.uptime(),
-        memory: process.memoryUsage(),
         config: {
             upiId: CONFIG.upiId,
-            merchantName: CONFIG.merchantName,
-            autoVerifyEnabled: CONFIG.autoVerifyEnabled
+            merchantName: CONFIG.merchantName
         }
-    };
-    
-    res.status(200).json(health);
+    });
 });
 
 // Home page
@@ -252,19 +142,18 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Create payment order with enhanced features
-app.post('/api/create-order', validateCreateOrder, async (req, res) => {
+// Create payment order
+app.post('/api/create-order', (req, res) => {
     try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
+        const { amount, customerName, customerEmail } = req.body;
+        
+        if (!amount || amount <= 0) {
             return res.status(400).json({
                 success: false,
-                error: 'Validation failed',
-                details: errors.array()
+                error: 'Invalid amount'
             });
         }
 
-        const { amount, customerName, customerEmail } = req.body;
         const orderId = generateOrderId();
         const upiLink = generateUPILink(amount, orderId);
         
@@ -275,17 +164,15 @@ app.post('/api/create-order', validateCreateOrder, async (req, res) => {
             customerEmail: customerEmail || '',
             upiLink,
             status: 'pending',
-            createdAt: moment().toISOString(),
-            expiresAt: moment().add(CONFIG.paymentTimeout, 'milliseconds').toISOString(),
+            createdAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 600000).toISOString(), // 10 minutes
             utr: null,
             verifiedAt: null,
-            verificationMethod: null,
-            ipAddress: req.ip,
-            userAgent: req.get('User-Agent')
+            verificationMethod: null
         };
 
         const payments = loadPayments();
-        payments.unshift(payment); // Add to beginning for latest first
+        payments.unshift(payment);
         
         if (!savePayments(payments)) {
             return res.status(500).json({
@@ -296,26 +183,9 @@ app.post('/api/create-order', validateCreateOrder, async (req, res) => {
 
         // Schedule auto-verification
         scheduleAutoVerification(orderId);
-        
-        logActivity('info', 'Payment order created', {
-            orderId,
-            amount,
-            customerName
-        });
 
-        // Generate QR Code with enhanced options
-        const qrOptions = {
-            width: CONFIG.qrCodeSize,
-            height: CONFIG.qrCodeSize,
-            margin: 2,
-            color: {
-                dark: '#000000',
-                light: '#FFFFFF'
-            },
-            errorCorrectionLevel: 'M'
-        };
-
-        QRCode.toDataURL(upiLink, qrOptions, (err, qrCode) => {
+        // Generate QR Code
+        QRCode.toDataURL(upiLink, { width: 256, margin: 2 }, (err, qrCode) => {
             const response = {
                 success: true,
                 orderId,
@@ -323,19 +193,14 @@ app.post('/api/create-order', validateCreateOrder, async (req, res) => {
                 upiLink,
                 qrCode: err ? null : qrCode,
                 expiresAt: payment.expiresAt,
-                message: 'Payment link generated successfully',
-                autoVerifyEnabled: CONFIG.autoVerifyEnabled
+                message: 'Payment link generated successfully'
             };
-
-            if (err) {
-                logActivity('warn', 'QR Code generation failed', { orderId, error: err.message });
-            }
 
             res.json(response);
         });
 
     } catch (error) {
-        logActivity('error', 'Order creation failed', { error: error.message });
+        console.error('Error creating order:', error);
         res.status(500).json({
             success: false,
             error: 'Internal server error'
@@ -343,19 +208,18 @@ app.post('/api/create-order', validateCreateOrder, async (req, res) => {
     }
 });
 
-// Enhanced payment verification
-app.post('/api/verify-payment', validateVerifyPayment, (req, res) => {
+// Verify payment
+app.post('/api/verify-payment', (req, res) => {
     try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
+        const { orderId, utr } = req.body;
+        
+        if (!orderId || !utr) {
             return res.status(400).json({
                 success: false,
-                error: 'Validation failed',
-                details: errors.array()
+                error: 'Order ID and UTR are required'
             });
         }
 
-        const { orderId, utr } = req.body;
         const payments = loadPayments();
         const paymentIndex = payments.findIndex(p => p.orderId === orderId);
         
@@ -368,22 +232,13 @@ app.post('/api/verify-payment', validateVerifyPayment, (req, res) => {
 
         const payment = payments[paymentIndex];
         
-        // Check if expired
-        if (moment().isAfter(payment.expiresAt)) {
-            return res.status(400).json({
-                success: false,
-                error: 'Payment link has expired'
-            });
-        }
-        
         if (payment.status === 'paid') {
             return res.json({
                 success: true,
                 message: 'Payment already verified',
                 status: 'paid',
                 orderId,
-                amount: payment.amount,
-                verifiedAt: payment.verifiedAt
+                amount: payment.amount
             });
         }
 
@@ -399,9 +254,8 @@ app.post('/api/verify-payment', validateVerifyPayment, (req, res) => {
         // Mark as verified
         payments[paymentIndex].utr = utr;
         payments[paymentIndex].status = 'paid';
-        payments[paymentIndex].verifiedAt = moment().toISOString();
+        payments[paymentIndex].verifiedAt = new Date().toISOString();
         payments[paymentIndex].verificationMethod = 'manual';
-        payments[paymentIndex].verifierIp = req.ip;
         
         if (!savePayments(payments)) {
             return res.status(500).json({
@@ -410,24 +264,16 @@ app.post('/api/verify-payment', validateVerifyPayment, (req, res) => {
             });
         }
 
-        logActivity('info', 'Payment verified manually', {
-            orderId,
-            utr,
-            amount: payment.amount
-        });
-
         res.json({
             success: true,
             message: 'Payment verified successfully',
             status: 'paid',
             orderId,
-            amount: payment.amount,
-            verifiedAt: payments[paymentIndex].verifiedAt,
-            redirectUrl: `${process.env.RENDER_EXTERNAL_URL}/success?order=${orderId}`
+            amount: payment.amount
         });
 
     } catch (error) {
-        logActivity('error', 'Payment verification failed', { error: error.message });
+        console.error('Error verifying payment:', error);
         res.status(500).json({
             success: false,
             error: 'Internal server error'
@@ -435,7 +281,7 @@ app.post('/api/verify-payment', validateVerifyPayment, (req, res) => {
     }
 });
 
-// Enhanced payment status with auto-refresh
+// Get payment status
 app.get('/api/payment-status/:orderId', (req, res) => {
     try {
         const { orderId } = req.params;
@@ -449,7 +295,7 @@ app.get('/api/payment-status/:orderId', (req, res) => {
             });
         }
 
-        const isExpired = moment().isAfter(payment.expiresAt);
+        const isExpired = new Date() > new Date(payment.expiresAt);
         
         res.json({
             success: true,
@@ -460,13 +306,12 @@ app.get('/api/payment-status/:orderId', (req, res) => {
                 createdAt: payment.createdAt,
                 expiresAt: payment.expiresAt,
                 verifiedAt: payment.verifiedAt,
-                verificationMethod: payment.verificationMethod,
-                timeRemaining: isExpired ? 0 : moment(payment.expiresAt).diff(moment(), 'seconds')
+                timeRemaining: isExpired ? 0 : Math.max(0, Math.floor((new Date(payment.expiresAt) - new Date()) / 1000))
             }
         });
 
     } catch (error) {
-        logActivity('error', 'Status check failed', { error: error.message });
+        console.error('Error getting payment status:', error);
         res.status(500).json({
             success: false,
             error: 'Internal server error'
@@ -474,19 +319,16 @@ app.get('/api/payment-status/:orderId', (req, res) => {
     }
 });
 
-// Admin routes with enhanced security
+// Admin login
 app.post('/api/admin/login', (req, res) => {
     const { username, password } = req.body;
     
     if (username === CONFIG.adminUsername && password === CONFIG.adminPassword) {
-        logActivity('info', 'Admin login successful', { username, ip: req.ip });
         res.json({
             success: true,
-            message: 'Login successful',
-            sessionId: uuidv4()
+            message: 'Login successful'
         });
     } else {
-        logActivity('warn', 'Admin login failed', { username, ip: req.ip });
         res.status(401).json({
             success: false,
             error: 'Invalid credentials'
@@ -494,39 +336,16 @@ app.post('/api/admin/login', (req, res) => {
     }
 });
 
-// Enhanced admin payments view
+// Get all payments (admin)
 app.get('/api/admin/payments', (req, res) => {
     try {
-        const { page = 1, limit = 50, status, search } = req.query;
-        let payments = loadPayments();
+        const payments = loadPayments();
         
-        // Filter by status
-        if (status && status !== 'all') {
-            payments = payments.filter(p => p.status === status);
-        }
-        
-        // Search functionality
-        if (search) {
-            payments = payments.filter(p => 
-                p.orderId.toLowerCase().includes(search.toLowerCase()) ||
-                p.customerName.toLowerCase().includes(search.toLowerCase()) ||
-                (p.utr && p.utr.toLowerCase().includes(search.toLowerCase()))
-            );
-        }
-        
-        // Pagination
-        const startIndex = (page - 1) * limit;
-        const endIndex = startIndex + parseInt(limit);
-        const paginatedPayments = payments.slice(startIndex, endIndex);
-        
-        // Statistics
+        // Calculate statistics
         const stats = {
             total: payments.length,
             pending: payments.filter(p => p.status === 'pending').length,
             paid: payments.filter(p => p.status === 'paid').length,
-            expired: payments.filter(p => 
-                p.status === 'pending' && moment().isAfter(p.expiresAt)
-            ).length,
             totalRevenue: payments
                 .filter(p => p.status === 'paid')
                 .reduce((sum, p) => sum + p.amount, 0)
@@ -534,18 +353,11 @@ app.get('/api/admin/payments', (req, res) => {
         
         res.json({
             success: true,
-            payments: paginatedPayments,
-            pagination: {
-                currentPage: parseInt(page),
-                totalPages: Math.ceil(payments.length / limit),
-                totalItems: payments.length,
-                itemsPerPage: parseInt(limit)
-            },
+            payments: payments.reverse(), // Latest first
             stats
         });
-        
     } catch (error) {
-        logActivity('error', 'Admin payments fetch failed', { error: error.message });
+        console.error('Error getting payments:', error);
         res.status(500).json({
             success: false,
             error: 'Internal server error'
@@ -553,7 +365,7 @@ app.get('/api/admin/payments', (req, res) => {
     }
 });
 
-// Manual admin verification
+// Admin verify payment
 app.post('/api/admin/verify-payment', (req, res) => {
     try {
         const { orderId } = req.body;
@@ -568,9 +380,8 @@ app.post('/api/admin/verify-payment', (req, res) => {
         }
 
         payments[paymentIndex].status = 'paid';
-        payments[paymentIndex].verifiedAt = moment().toISOString();
+        payments[paymentIndex].verifiedAt = new Date().toISOString();
         payments[paymentIndex].verificationMethod = 'admin';
-        payments[paymentIndex].adminVerifierIp = req.ip;
         
         if (!savePayments(payments)) {
             return res.status(500).json({
@@ -579,19 +390,13 @@ app.post('/api/admin/verify-payment', (req, res) => {
             });
         }
 
-        logActivity('info', 'Payment verified by admin', {
-            orderId,
-            amount: payments[paymentIndex].amount,
-            adminIp: req.ip
-        });
-
         res.json({
             success: true,
             message: 'Payment marked as verified'
         });
 
     } catch (error) {
-        logActivity('error', 'Admin verification failed', { error: error.message });
+        console.error('Error verifying payment:', error);
         res.status(500).json({
             success: false,
             error: 'Internal server error'
@@ -599,21 +404,190 @@ app.post('/api/admin/verify-payment', (req, res) => {
     }
 });
 
-// Success page redirect
+// Success page
 app.get('/success', (req, res) => {
     const orderId = req.query.order;
-    res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Payment Successful</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-                body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f0f8ff; }
-                .success-container { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto; }
-                .success-icon { font-size: 64px; color: #28a745; margin-bottom: 20px; }
-                h1 { color: #28a745; margin-bottom: 10px; }
-                .order-id { background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0; font-family: monospace; }
-                .back-btn { background: #007bff; color: white; padding: 12px 24px; border: none; border-radius: 8px; text-decoration: none; display: inline-block; margin-top: 20px; }
-            </style>
-        </head>
+    const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Payment Successful</title>
+        <style>
+            body { 
+                font-family: 'Segoe UI', sans-serif; 
+                background: linear-gradient(135deg, #28a745, #20c997); 
+                min-height: 100vh; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                margin: 0; 
+                padding: 20px; 
+            }
+            .container { 
+                background: white; 
+                padding: 40px; 
+                border-radius: 15px; 
+                box-shadow: 0 20px 40px rgba(0,0,0,0.1); 
+                text-align: center; 
+                max-width: 500px; 
+                width: 100%; 
+            }
+            .success-icon { 
+                font-size: 64px; 
+                color: #28a745; 
+                margin-bottom: 20px; 
+            }
+            h1 { 
+                color: #28a745; 
+                margin-bottom: 15px; 
+            }
+            .order-info { 
+                background: #f8f9fa; 
+                padding: 20px; 
+                border-radius: 10px; 
+                margin: 20px 0; 
+                font-family: monospace; 
+            }
+            .back-btn { 
+                background: linear-gradient(135deg, #007bff, #0056b3); 
+                color: white; 
+                padding: 12px 24px; 
+                border: none; 
+                border-radius: 8px; 
+                text-decoration: none; 
+                display: inline-block; 
+                margin-top: 20px; 
+                transition: transform 0.3s ease; 
+            }
+            .back-btn:hover { 
+                transform: translateY(-2px); 
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="success-icon">✅</div>
+            <h1>Payment Successful!</h1>
+            <p>Your payment has been processed and verified successfully.</p>
+            ${orderId ? `<div class="order-info">Order ID: ${orderId}</div>` : ''}
+            <p>Thank you for choosing ${CONFIG.businessName}!</p>
+            <a href="/" class="back-btn">← Back to Home</a>
+        </div>
+    </body>
+    </html>`;
+    
+    res.send(html);
+});
+
+// Failure page
+app.get('/failure', (req, res) => {
+    const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Payment Failed</title>
+        <style>
+            body { 
+                font-family: 'Segoe UI', sans-serif; 
+                background: linear-gradient(135deg, #dc3545, #c82333); 
+                min-height: 100vh; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                margin: 0; 
+                padding: 20px; 
+            }
+            .container { 
+                background: white; 
+                padding: 40px; 
+                border-radius: 15px; 
+                box-shadow: 0 20px 40px rgba(0,0,0,0.1); 
+                text-align: center; 
+                max-width: 500px; 
+                width: 100%; 
+            }
+            .failure-icon { 
+                font-size: 64px; 
+                color: #dc3545; 
+                margin-bottom: 20px; 
+            }
+            h1 { 
+                color: #dc3545; 
+                margin-bottom: 15px; 
+            }
+            .back-btn { 
+                background: linear-gradient(135deg, #007bff, #0056b3); 
+                color: white; 
+                padding: 12px 24px; 
+                border: none; 
+                border-radius: 8px; 
+                text-decoration: none; 
+                display: inline-block; 
+                margin-top: 20px; 
+                transition: transform 0.3s ease; 
+            }
+            .back-btn:hover { 
+                transform: translateY(-2px); 
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="failure-icon">❌</div>
+            <h1>Payment Failed</h1>
+            <p>We couldn't process your payment. Please try again.</p>
+            <a href="/" class="back-btn">← Try Again</a>
+        </div>
+    </body>
+    </html>`;
+    
+    res.send(html);
+});
+
+// Webhook endpoint
+app.post('/api/webhook', (req, res) => {
+    console.log('Webhook received:', req.body);
+    res.json({ success: true });
+});
+
+// Error handling
+app.use((err, req, res, next) => {
+    console.error('Unhandled error:', err);
+    res.status(500).json({
+        success: false,
+        error: 'Something went wrong!'
+    });
+});
+
+// 404 handler
+app.use((req, res) => {
+    res.status(404).json({
+        success: false,
+        error: 'Route not found'
+    });
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('Server shutting down gracefully');
+    process.exit(0);
+});
+
+process.on('SIGINT', () => {
+    console.log('Server interrupted');
+    process.exit(0);
+});
+
+// Start server
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Ritwik's UPI Gateway v3.0 running on port ${PORT}`);
+    console.log(`📱 Main Site: http://localhost:${PORT}`);
+    console.log(`🔐 Admin Panel: http://localhost:${PORT}/admin.html`);
+    console.log(`💳 UPI ID: ${CONFIG.upiId}`);
+    console.log(`🏪 Merchant: ${CONFIG.merchantName}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+});
