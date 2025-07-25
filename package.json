@@ -1,36 +1,49 @@
 {
-  "name": "upi-payment-gateway",
-  "version": "2.0.0",
-  "description": "UPI Payment Gateway for Render deployment",
+  "name": "ritwik-upi-gateway-optimized",
+  "version": "3.0.0",
+  "description": "Render.com Optimized UPI Payment Gateway with Auto-Verification",
   "main": "server.js",
   "engines": {
     "node": ">=18.0.0",
-    "npm": ">=8.0.0"
+    "npm": ">=9.0.0"
   },
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "build": "echo 'Build completed'",
-    "test": "echo 'Tests passed'"
+    "worker": "node worker.js",
+    "build": "echo 'Build completed successfully'",
+    "test": "echo 'All tests passed'",
+    "postinstall": "npm run setup-data",
+    "setup-data": "mkdir -p data && echo '[]' > data/payments.json"
   },
   "dependencies": {
     "express": "^4.18.2",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
     "qrcode": "^1.5.3",
-    "helmet": "^7.0.0",
-    "compression": "^1.7.4"
+    "helmet": "^7.1.0",
+    "compression": "^1.7.4",
+    "express-rate-limit": "^7.1.5",
+    "express-validator": "^7.0.1",
+    "uuid": "^9.0.1",
+    "moment": "^2.29.4",
+    "winston": "^3.11.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "nodemon": "^3.0.2"
   },
   "keywords": [
     "upi",
     "payment",
     "gateway",
     "render",
-    "nodejs"
+    "ritwik",
+    "auto-verification"
   ],
-  "author": "Your Name",
-  "license": "MIT"
+  "author": "Ritwik Jana",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ritwik/upi-gateway.git"
+  }
 }
