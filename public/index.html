@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UPI Payment Gateway</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .amount-section {
+            margin-bottom: 30px;
+        }
+
+        .amount-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .amount-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .amount-btn {
+            background: #f8f9ff;
+            border: 2px solid #e1e5ff;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .amount-btn:hover, .amount-btn.active {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5ff;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .pay-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .pay-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .pay-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .payment-details {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .qr-section {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .qr-code {
+            max-width: 200px;
+            margin: 15px auto;
+            border: 3px solid #667eea;
+            border-radius: 10px;
+        }
+
+        .upi-link {
+            background: #667eea;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px 0;
+            font-weight: 600;
+        }
+
+        .order-info {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .order-info p {
+            margin: 5px 0;
+            color: #333;
+        }
+
+        .verify-section {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .verify-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #ff4757;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: none;
+        }
+
+        .success {
+            background: #2ed573;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+                border-radius: 10px;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .amount-buttons {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💳 UPI Payment</h1>
+            <p>Secure and Fast Payment Gateway</p>
+        </div>
+        
+        <div class="content">
+            <form id="paymentForm">
+                <div class="amount-section">
+                    <h3>Select Amount</h3>
+                    <div class="amount-buttons">
+                        <button type="button" class="amount-btn" data-amount="99">₹99</button>
+                        <button type="button" class="amount-btn" data-amount="199">₹199</button>
+                        <button type="button" class="amount-btn" data-amount="299">₹299</button>
+                        <button type="button" class="amount-btn" data-amount="499">₹499</button>
+                        <button type="button" class="amount-btn" data-amount="999">₹999</button>
+                        <button type="button" class="amount-btn" data-amount="1999">₹1999</button>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="amount">Or Enter Custom Amount (₹)</label>
+                    <input type="number" id="amount" name="amount" placeholder="Enter amount" min="1" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="customerName">Your Name (Optional)</label>
+                    <input type="text" id="customerName" name="customerName" placeholder="Enter your name">
+                </div>
+
+                <div class="input-group">
+                    <label for="customerEmail">Email (Optional)</label>
+                    <input type="email" id="customerEmail" name="customerEmail" placeholder="Enter your email">
+                </div>
+
+                <button type="submit" class="pay-btn" id="payBtn">
+                    🚀 Generate Payment Link
+                </button>
+            </form>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Generating payment link...</p>
+            </div>
+
+            <div class="error" id="error"></div>
+            <div class="success" id="success"></div>
+
+            <div class="payment-details" id="paymentDetails">
+                <h3>📱 Complete Your Payment</h3>
+                
+                <div class="order-info">
+                    <p><strong>Order ID:</strong> <span id="orderId"></span></p>
+                    <p><strong>Amount:</strong> ₹<span id="orderAmount"></span></p>
+                    <p><strong>Status:</strong> <span style="color: orange;">Pending</span></p>
+                </div>
+
+                <div class="qr-section">
+                    <h4>Scan QR Code with any UPI app</h4>
+                    <img id="qrCode" class="qr-code" alt="QR Code" style="display: none;">
+                    <br>
+                    <p style="margin: 15px 0; color: #666;">OR</p>
+                    <a id="upiLink" class="upi-link" target="_blank">
+                        📱 Pay with UPI App
+                    </a>
+                </div>
+
+                <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #ffc107;">
+                    <h4 style="color: #856404; margin-bottom: 10px;">Payment Instructions:</h4>
+                    <ol style="color: #856404; padding-left: 20px;">
+                        <li>Click "Pay with UPI App" or scan the QR code</li>
+                        <li>Complete payment in your UPI app</li>
+                        <li>Note down the <strong>Transaction ID (UTR)</strong></li>
+                        <li>Click "Verify Payment" below to confirm</li>
+                    </ol>
+                </div>
+
+                <div class="verify-section">
+                    <a href="verify.html" class="verify-btn" id="verifyLink">
+                        ✅ Verify Payment
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+
+        // Amount button selection
+        document.querySelectorAll('.amount-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('amount').value = btn.dataset.amount;
+            });
+        });
+
+        // Form submission
+        document.getElementById('paymentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const amount = document.getElementById('amount').value;
+            const customerName = document.getElementById('customerName').value;
+            const customerEmail = document.getElementById('customerEmail').value;
+
+            if (!amount || amount <= 0) {
+                showError('Please enter a valid amount');
+                return;
+            }
+
+            showLoading(true);
+            hideMessages();
+
+            try {
+                const response = await fetch(`${API_BASE}/api/create-order`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        amount: parseFloat(amount),
+                        customerName,
+                        customerEmail
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showPaymentDetails(data);
+                    showSuccess('Payment link generated successfully! Complete payment and verify.');
+                } else {
+                    showError(data.error || 'Failed to create payment order');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Network error. Please try again.');
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        function showPaymentDetails(data) {
+            document.getElementById('orderId').textContent = data.orderId;
+            document.getElementById('orderAmount').textContent = data.amount;
+            document.getElementById('upiLink').href = data.upiLink;
+            
+            if (data.qrCode) {
+                const qrImg = document.getElementById('qrCode');
+                qrImg.src = data.qrCode;
+                qrImg.style.display = 'block';
+            }
+
+            // Update verify link with order ID
+            const verifyLink = document.getElementById('verifyLink');
+            verifyLink.href = `verify.html?orderId=${data.orderId}`;
+
+            document.getElementById('paymentDetails').style.display = 'block';
+            
+            // Scroll to payment details
+            document.getElementById('paymentDetails').scrollIntoView({ 
+                behavior: 'smooth' 
+            });
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            document.getElementById('payBtn').disabled = show;
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('success');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+        }
+
+        function hideMessages() {
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('success').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
