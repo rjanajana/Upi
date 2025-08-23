@@ -3,14 +3,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Firebase Configuration ---
     // IMPORTANT: Fill in your actual Firebase config details here
     const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_AUTH_DOMAIN",
-        databaseURL: "https://turnament-c183f-default-rtdb.firebaseio.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_STORAGE_BUCKET",
-        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-        appId: "YOUR_APP_ID"
-    };
+    apiKey: "AIzaSyAg6E4_J6q9n0kFWwMo_uq1G8nJlsmDSDA",
+    authDomain: "turnament-c183f.firebaseapp.com",
+    databaseURL: "https://turnament-c183f-default-rtdb.firebaseio.com",
+    projectId: "turnament-c183f",
+    storageBucket: "turnament-c183f.appspot.com",
+    messagingSenderId: "523966497566",
+    appId: "1:523966497566:web:72f37516ecd277da4cff0f"
+};
 
     // Initialize Firebase
     if (!firebase.apps.length) {
