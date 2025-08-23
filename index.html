@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Narayana API Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://www.gstatic.com/firebasejs/9.0.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.2/firebase-database-compat.js"></script>
+</head>
+<body>
+    <!-- Particles Background -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Admin Link -->
+    <a href="/admin.html" class="admin-link">
+        <i class="fas fa-cog"></i> Admin
+    </a>
+
+    <div class="container">
+        <header>
+            <h1>Narayana API Platform</h1>
+            <p class="subtitle">Premium API Services with Advanced Security & Lightning Speed</p>
+        </header>
+
+        <div class="cards">
+            <!-- Free Mode Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon free-icon">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <h2>Free Mode</h2>
+                </div>
+                <p>Experience our premium API service with instant access - no registration required.</p>
+                <div class="uid-input">
+                    <input type="text" id="uidFree" placeholder="Enter your UID (e.g. 10697110771)" value="10697110771">
+                </div>
+                <button class="btn" id="freeSubmit">
+                    <span class="btn-text">Launch Free Test</span>
+                </button>
+                <div class="error" id="freeError"></div>
+                <div class="result" id="freeResult"></div>
+            </div>
+
+            <!-- Paid Mode Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon paid-icon">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <h2>Premium Subscription</h2>
+                </div>
+                <p>Unlock unlimited access with priority support and advanced features.</p>
+                <div class="uid-input" id="uidPaidInput" style="display: none;">
+                    <input type="text" id="uidPaid" placeholder="Enter your UID (e.g. 11111111)" value="11111111">
+                    <button class="btn" id="paidUidSubmit">
+                        <span class="btn-text">Process Premium Request</span>
+                    </button>
+                    <div class="error" id="paidError"></div>
+                    <div class="result" id="paidResult"></div>
+                </div>
+                <button class="btn" id="paidSubmit">
+                    <span class="btn-text">Upgrade to Premium</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Payment Modal -->
+        <div class="modal" id="paymentModal">
+            <div class="modal-content">
+                <button class="btn secondary" id="closeModal" style="position: absolute; top: 1rem; right: 1rem; width: auto; padding: 0.5rem 1rem; margin: 0;">
+                    <i class="fas fa-times"></i>
+                </button>
+                <h3>Complete Your Premium Upgrade</h3>
+                <p>Scan the QR code below to complete your payment securely</p>
+                <img id="qrImage" src="" alt="Payment QR Code">
+                <div id="contactAfterQR">
+                    <a href="#" id="contactLink">
+                        <i class="fas fa-headset"></i>
+                        Need Help? Contact Support
+                    </a>
+                    <p style="margin-top: 1rem; opacity: 0.8; font-size: 0.9rem;">
+                        Our premium support team is ready to assist you 24/7
+                    </p>
+                </div>
+                <button class="btn secondary" id="continueAfterPayment" style="margin-top: 2rem; display: none;">
+                    Continue to Service
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="links" id="contactLinks">
+            <!-- Dynamic links from Firebase -->
+        </div>
+        <p style="margin-top: 1rem; opacity: 0.7;">
+            © 2025 Narayana API Platform. Premium services with enterprise-grade security.
+        </p>
+    </div>
+
+    <script src="js/script.js"></script>
+</body>
+</html>

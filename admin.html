@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Narayana API - Admin Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://www.gstatic.com/firebasejs/9.0.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.2/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.2/firebase-auth-compat.js"></script>
+</head>
+<body>
+    <!-- Particles Background -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Back Link -->
+    <a href="/index.html" class="back-link">
+        <i class="fas fa-arrow-left"></i> Back to Site
+    </a>
+
+    <div class="container">
+        <!-- Login Form -->
+        <div class="card" id="loginForm">
+            <h1><i class="fas fa-shield-alt"></i> Admin Portal</h1>
+            <div class="form-group">
+                <label for="email"><i class="fas fa-envelope"></i> Email Address</label>
+                <input type="email" id="email" placeholder="admin@narayana.com" value="admin@narayana.com">
+            </div>
+            <div class="form-group">
+                <label for="password"><i class="fas fa-lock"></i> Password</label>
+                <input type="password" id="password" placeholder="••••••••••••" value="admin123456">
+            </div>
+            <button class="btn" id="loginBtn">
+                <i class="fas fa-sign-in-alt"></i> Secure Login
+            </button>
+            <div class="message error-msg" id="loginError"></div>
+        </div>
+
+        <!-- Dashboard -->
+        <div id="dashboard">
+            <div class="card">
+                <div class="user-info">
+                    <i class="fas fa-user-crown" style="font-size: 2rem; margin-bottom: 0.5rem; color: #4ecdc4;"></i>
+                    <h2>Welcome, Admin</h2>
+                    <p id="userEmail" style="opacity: 0.8;"></p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-cogs"></i> API Configuration</h2>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="apiBaseUrl"><i class="fas fa-server"></i> API Base URL</label>
+                        <input type="text" id="apiBaseUrl" placeholder="https://narayan-like-api-wine.vercel.app">
+                    </div>
+                    <div class="form-group">
+                        <label for="apiEndpoint"><i class="fas fa-route"></i> API Endpoint</label>
+                        <input type="text" id="apiEndpoint" placeholder="xyz1">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-credit-card"></i> Payment Configuration</h2>
+                <div class="form-group">
+                    <label for="qrCodeUrl"><i class="fas fa-qrcode"></i> QR Code Image URL</label>
+                    <input type="text" id="qrCodeUrl" placeholder="https://your-qr-image-url.com/qr.png">
+                </div>
+                <div class="form-group">
+                    <label for="price"><i class="fas fa-money-bill"></i> Pricing Information</label>
+                    <input type="text" id="price" placeholder="₹199/month">
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-address-book"></i> Contact Information</h2>
+                <div class="form-group">
+                    <label for="contact"><i class="fas fa-phone"></i> Primary Contact</label>
+                    <input type="text" id="contact" placeholder="https://wa.me/1234567890">
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="telegram"><i class="fab fa-telegram"></i> Telegram</label>
+                        <input type="text" id="telegram" placeholder="https://t.me/narayana">
+                    </div>
+                    <div class="form-group">
+                        <label for="youtube"><i class="fab fa-youtube"></i> YouTube</label>
+                        <input type="text" id="youtube" placeholder="https://youtube.com/@narayana">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="devContact"><i class="fas fa-code"></i> Developer Contact</label>
+                    <input type="text" id="devContact" placeholder="https://github.com/developer">
+                </div>
+            </div>
+
+            <div class="card">
+                <button class="btn success" id="saveBtn">
+                    <i class="fas fa-save"></i> Save Configuration
+                </button>
+                <button class="btn error" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+                <div class="message success-msg" id="saveSuccess">✅ Configuration saved successfully!</div>
+                <div class="message error-msg" id="saveError"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
