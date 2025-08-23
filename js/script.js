@@ -4,14 +4,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Firebase Configuration ---
     // !!! ATTENTION: YAHAN APNI ASLI FIREBASE PROJECT KI DETAILS DAALEIN !!!
     const firebaseConfig = {
-    apiKey: "AIzaSyAg6E4_J6q9n0kFWwMo_uq1G8nJlsmDSDA",
-    authDomain: "turnament-c183f.firebaseapp.com",
-    databaseURL: "https://turnament-c183f-default-rtdb.firebaseio.com",
-    projectId: "turnament-c183f",
-    storageBucket: "turnament-c183f.appspot.com",
-    messagingSenderId: "523966497566",
-    appId: "1:523966497566:web:72f37516ecd277da4cff0f"
-};
+        apiKey: "AIzaSy...",
+        authDomain: "your-project.firebaseapp.com",
+        databaseURL: "https://turnament-c183f-default-rtdb.firebaseio.com", // Aapka Database URL Sahi Hai
+        projectId: "your-project-id",
+        storageBucket: "your-project.appspot.com",
+        messagingSenderId: "...",
+        appId: "..."
+    };
 
     // Initialize Firebase
     try {
@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     } catch (e) {
         console.error("Error initializing Firebase:", e);
-        alert("Could not connect to Firebase. Please check your config.");
+        alert("Could not connect to Firebase. Please check your config in script.js.");
         return;
     }
     
@@ -47,15 +47,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- LOGIC FOR INDEX.HTML ---
     const freeSubmitBtn = document.getElementById('freeSubmit');
-    const paidSubmitBtn = document.getElementById('paidSubmit');
-    const paymentModal = document.getElementById('paymentModal');
-    const closeModalBtn = document.getElementById('closeModal');
-    const contactLinksContainer = document.getElementById('contactLinks');
-
     if (freeSubmitBtn) {
-        // Fetch config for index page
+        const paidSubmitBtn = document.getElementById('paidSubmit');
+        const paymentModal = document.getElementById('paymentModal');
+        const closeModalBtn = document.getElementById('closeModal');
+        const contactLinksContainer = document.getElementById('contactLinks');
         const qrImage = document.getElementById('qrImage');
         const contactLink = document.getElementById('contactLink');
+        
         db.ref('config').once('value', snapshot => {
             const config = snapshot.val();
             if (config) {
@@ -106,7 +105,6 @@ document.addEventListener('DOMContentLoaded', () => {
         paidSubmitBtn.addEventListener('click', () => paymentModal && paymentModal.classList.add('active'));
         closeModalBtn.addEventListener('click', () => paymentModal && paymentModal.classList.remove('active'));
     }
-
 
     // --- LOGIC FOR ADMIN.HTML ---
     const loginBtn = document.getElementById('loginBtn');
