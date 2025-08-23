@@ -4,14 +4,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Firebase Configuration ---
     // !!! ATTENTION: YAHAN APNI ASLI FIREBASE PROJECT KI DETAILS DAALEIN !!!
     const firebaseConfig = {
-        apiKey: "AIzaSy...",
-        authDomain: "your-project.firebaseapp.com",
-        databaseURL: "https://turnament-c183f-default-rtdb.firebaseio.com", // Aapka Database URL Sahi Hai
-        projectId: "your-project-id",
-        storageBucket: "your-project.appspot.com",
-        messagingSenderId: "...",
-        appId: "..."
-    };
+    apiKey: "AIzaSyAg6E4_J6q9n0kFWwMo_uq1G8nJlsmDSDA",
+    authDomain: "turnament-c183f.firebaseapp.com",
+    databaseURL: "https://turnament-c183f-default-rtdb.firebaseio.com",
+    projectId: "turnament-c183f",
+    storageBucket: "turnament-c183f.appspot.com",
+    messagingSenderId: "523966497566",
+    appId: "1:523966497566:web:72f37516ecd277da4cff0f"
+};
 
     // Initialize Firebase
     try {
