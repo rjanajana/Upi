@@ -6,7 +6,15 @@
       "dest": "api/proxy.py"
     },
     {
-      "src": "/(.*\\.(css|js|ico|png|jpg|jpeg|gif|svg))$",
+      "src": "/css/(.*)",
+      "dest": "css/$1"
+    },
+    {
+      "src": "/js/(.*)",
+      "dest": "js/$1"
+    },
+    {
+      "src": "/(.*\\.(ico|png|jpg|jpeg|gif|svg))$",
       "dest": "/$1"
     },
     {
