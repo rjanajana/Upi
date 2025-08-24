@@ -4,13 +4,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Firebase Configuration ---
     // !!! ATTENTION: YAHAN APNI ASLI FIREBASE PROJECT KI DETAILS DAALEIN !!!
     const firebaseConfig = {
-    apiKey: "AIzaSyAg6E4_J6q9n0kFWwMo_uq1G8nJlsmDSDA",
-    authDomain: "turnament-c183f.firebaseapp.com",
-    databaseURL: "https://turnament-c183f-default-rtdb.firebaseio.com",
-    projectId: "turnament-c183f",
-    storageBucket: "turnament-c183f.appspot.com",
-    messagingSenderId: "523966497566",
-    appId: "1:523966497566:web:72f37516ecd277da4cff0f"
+  apiKey: "AIzaSyAg6E4_J6q9n0kFWwMo_uq1G8nJlsmDSDA",
+  authDomain: "turnament-c183f.firebaseapp.com",
+  databaseURL: "https://turnament-c183f-default-rtdb.firebaseio.com",
+  projectId: "turnament-c183f",
+  storageBucket: "turnament-c183f.firebasestorage.app",
+  messagingSenderId: "523966497566",
+  appId: "1:523966497566:web:72f37516ecd277da4cff0f",
+  measurementId: "G-EPP0V8N8L4"
 };
 
     // Initialize Firebase
