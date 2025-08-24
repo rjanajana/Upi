@@ -9,7 +9,6 @@
     <link rel="stylesheet" href="css/style.css">
     <script src="https://www.gstatic.com/firebasejs/9.0.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.2/firebase-database-compat.js"></script>
-    <!-- YEH LINE MISSING THI -->
     <script src="https://www.gstatic.com/firebasejs/9.0.2/firebase-auth-compat.js"></script>
 </head>
 <body>
@@ -17,7 +16,8 @@
     <div class="particles" id="particles"></div>
 
     <!-- Admin Link -->
-    <a href="/admin.html" class="admin-link">
+    <!-- CHANGE: href="/admin.html" ko href="/admin" kar diya gaya hai taaki Vercel rule se match ho -->
+    <a href="/admin" class="admin-link">
         <i class="fas fa-cog"></i> Admin
     </a>
 
