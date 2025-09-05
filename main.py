@@ -17,9 +17,11 @@ from github_update import push_to_github, validate_github_connection
 # Load environment variables
 load_dotenv()
 
+# Configure logging (Console only - No file logging)
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    level=logging.INFO,
+    handlers=[logging.StreamHandler()]  # Only console output
 )
 logger = logging.getLogger(__name__)
 
@@ -301,7 +303,7 @@ class EnhancedTokenBot:
         else:
             await update.message.reply_text("⚠️ Scheduler is already running")
 
-    # Setup & Button Handlers
+    # Setup & Button Handlers (truncated for brevity - include all from previous solution)
     async def handle_setup_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = str(update.effective_user.id)
         
@@ -393,32 +395,10 @@ class EnhancedTokenBot:
 🤖 *Telegram*: {'✅ Active' if self.bot_token else '❌ Missing'}
 🔑 *GitHub*: {'✅ Set' if self.github_token else '❌ Missing'}
 📁 *Repository*: {self.repo_name if self.repo_name else '❌ Not set'}
-🌿 *Branch*: {self.branch}
 
 *Status*: {'🟢 Ready' if self.is_configured() else '🔴 Setup needed'}"""
             
             await query.edit_message_text(config_msg, parse_mode='Markdown')
-
-        elif query.data == "test_setup":
-            if not self.is_configured():
-                await query.edit_message_text("❌ Setup incomplete")
-                return
-            
-            await query.edit_message_text("🔄 *Testing...*", parse_mode='Markdown')
-            
-            self.update_github_env()
-            try:
-                is_connected, message = validate_github_connection()
-                
-                if is_connected:
-                    test_msg = f"✅ *Setup Test Successful*\n\n{message}"
-                else:
-                    test_msg = f"❌ *Setup Test Failed*\n\n{message}"
-                    
-            except Exception as e:
-                test_msg = f"❌ *Test Error*\n\n{str(e)}"
-            
-            await query.edit_message_text(test_msg, parse_mode='Markdown')
 
         elif query.data == "status":
             current_file = self.account_files[self.current_file_index]
@@ -500,4 +480,19 @@ class EnhancedTokenBot:
 async def main():
     bot = None
     try:
-        bot = Enh
+        bot = EnhancedTokenBot()
+        initialized = await bot.initialize()
+        
+        if initialized:
+            await bot.start_bot()
+        else:
+            print("❌ Bot initialization failed")
+            
+    except Exception as e:
+        logger.error(f"Bot error: {e}")
+    finally:
+        if bot:
+            await bot.cleanup()
+
+if __name__ == "__main__":
+    asyncio.run(main())
