@@ -35,15 +35,12 @@ class SecureConfig:
         self.config_file = ".secure_config.json"
     
     def _encrypt(self, text):
-        """Simple encryption"""
         return base64.b64encode(text.encode()).decode()
     
     def _decrypt(self, encrypted_text):
-        """Simple decryption"""
         return base64.b64decode(encrypted_text.encode()).decode()
     
     def save_config(self, config):
-        """Save encrypted configuration"""
         encrypted_config = {}
         for key, value in config.items():
             if key in ['telegram_token', 'github_token']:
@@ -55,7 +52,6 @@ class SecureConfig:
             json.dump(encrypted_config, f, indent=2)
     
     def load_config(self):
-        """Load and decrypt configuration"""
         if not os.path.exists(self.config_file):
             return {}
         
@@ -111,16 +107,12 @@ class EnhancedTokenBot:
         self.max_retry_attempts = 3
 
         if not self.bot_token:
-            print("❌ No Telegram bot token found!")
-            print("🔧 Please set TELEGRAM_BOT_TOKEN in .env file")
             raise ValueError("TELEGRAM_BOT_TOKEN must be set")
 
     def is_configured(self):
-        """Check if bot is fully configured"""
         return bool(self.bot_token and self.github_token and self.repo_name)
 
     def update_github_env(self):
-        """Update environment variables for github_update.py"""
         if self.github_token:
             os.environ["GITHUB_TOKEN"] = self.github_token
         if self.repo_name:
@@ -129,12 +121,10 @@ class EnhancedTokenBot:
             os.environ["BRANCH"] = self.branch
 
     async def send_admin_notification(self, message, is_error=False):
-        """Send notification to admin with better error handling"""
         if self.admin_chat_id and self.application:
             try:
                 emoji = "🚨" if is_error else "✅"
-                # Escape special characters for Markdown
-                clean_message = message.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("]", "\\]")
+                clean_message = message.replace("_", "\\_").replace("*", "\\*")
                 notification_text = f"{emoji} *Admin Notification*\n\n{clean_message}"
                 
                 await self.application.bot.send_message(
@@ -144,66 +134,35 @@ class EnhancedTokenBot:
                 )
             except Exception as e:
                 logger.error(f"Failed to send admin notification: {e}")
-                # Fallback: send without markdown
-                try:
-                    await self.application.bot.send_message(
-                        chat_id=self.admin_chat_id,
-                        text=f"{'🚨' if is_error else '✅'} {message}"
-                    )
-                except Exception as e2:
-                    logger.error(f"Failed to send plain notification: {e2}")
 
-    async def get_system_stats(self):
-        """Basic system statistics without psutil"""
-        uptime = datetime.now(timezone.utc) - self.bot_start_time
-        return {
-            'uptime': str(uptime).split('.')[0],
-            'note': 'Lightweight mode - detailed system monitoring disabled'
-        }
-
-    # ==================== CORE PROCESS METHODS ====================
-    
     async def process_cycle(self, manual=False):
-        """Enhanced process cycle with configuration check"""
         if not self.is_configured():
-            error_msg = "❌ Bot not configured. Use /setup to configure GitHub and Telegram settings."
-            return error_msg
+            return "❌ Bot not configured. Use /setup first."
         
-        # Update environment for github operations
         self.update_github_env()
         
         try:
             current_file = self.account_files[self.current_file_index]
             start_time = datetime.now(timezone.utc)
-            logger.info(f"Starting cycle: {current_file} ({'Manual' if manual else 'Auto'})")
+            logger.info(f"Starting cycle: {current_file}")
 
-            # Check if file exists
             if not os.path.exists(current_file):
                 error_msg = f"❌ File {current_file} not found"
-                logger.error(error_msg)
-                await self.send_admin_notification(f"File Error: {current_file} missing", is_error=True)
                 self.total_failed_cycles += 1
                 return error_msg
 
-            # Process JSON using gwt.py
             logger.info(f"Processing tokens from {current_file}")
             process_json(current_file)
 
-            # Verify token_ind.json was created
             if not os.path.exists("token_ind.json"):
                 error_msg = "❌ token_ind.json was not created"
-                logger.error(error_msg)
-                await self.send_admin_notification("Token Generation Failed", is_error=True)
                 self.total_failed_cycles += 1
                 return error_msg
 
-            # Check token count
             with open("token_ind.json", 'r') as f:
                 tokens = json.load(f)
                 token_count = len(tokens)
 
-            # Push to GitHub with retry mechanism
-            github_result = None
             for attempt in range(self.max_retry_attempts):
                 try:
                     github_result = push_to_github()
@@ -211,15 +170,12 @@ class EnhancedTokenBot:
                 except Exception as e:
                     if attempt == self.max_retry_attempts - 1:
                         raise e
-                    logger.warning(f"GitHub push attempt {attempt + 1} failed: {e}")
                     await asyncio.sleep(2)
 
-            # Update tracking variables
             self.last_run = datetime.now(timezone.utc)
             self.last_github_update = datetime.now(timezone.utc)
             processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
 
-            # Move to next file for next cycle
             self.current_file_index = (self.current_file_index + 1) % len(self.account_files)
             self.total_successful_cycles += 1
 
@@ -230,21 +186,17 @@ class EnhancedTokenBot:
 🚀 GitHub: Updated
 📊 Total Success: {self.total_successful_cycles}"""
 
-            logger.info(f"Cycle completed: {current_file} -> {token_count} tokens")
             await self.send_admin_notification(success_msg)
             return success_msg
 
         except Exception as e:
             self.total_failed_cycles += 1
-            error_msg = f"❌ Cycle Failed\nFile: {current_file}\nError: {str(e)}\nTotal Failures: {self.total_failed_cycles}"
-            logger.error(f"Cycle failed: {e}")
+            error_msg = f"❌ Cycle Failed\nError: {str(e)}"
             await self.send_admin_notification(error_msg, is_error=True)
             return error_msg
 
     def start_scheduler(self, interval_hours=8):
-        """Enhanced scheduler with custom intervals"""
         if not self.scheduler_running and self.is_configured():
-            # Remove existing job if any
             if self.scheduler.get_job('token_cycle'):
                 self.scheduler.remove_job('token_cycle')
             
@@ -260,122 +212,85 @@ class EnhancedTokenBot:
             
             self.scheduler_running = True
             self.next_run = datetime.now(timezone.utc) + timedelta(hours=interval_hours)
-            logger.info(f"Scheduler started - {interval_hours}-hour cycle activated")
             return f"✅ Scheduler started with {interval_hours}h interval"
-        elif not self.is_configured():
-            return "❌ Cannot start scheduler: Bot not configured"
-        else:
-            return "⚠️ Scheduler already running"
+        return "❌ Cannot start scheduler"
 
     async def stop_scheduler(self):
-        """Enhanced stop with confirmation"""
         if self.scheduler_running:
             if self.scheduler.running:
                 self.scheduler.shutdown(wait=False)
             self.scheduler_running = False
             self.next_run = None
-            logger.info("Scheduler stopped")
-            await self.send_admin_notification("⏹️ Scheduler stopped by user")
             return "⏹️ Scheduler stopped successfully"
         return "⚠️ Scheduler is already stopped"
 
     # ==================== TELEGRAM COMMAND HANDLERS ====================
     
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Enhanced start command with configuration check"""
         if not self.is_configured():
-            keyboard = [
-                [InlineKeyboardButton("⚙️ Setup Bot", callback_data="setup_github")],
-                [InlineKeyboardButton("📋 Help", callback_data="help")]
-            ]
+            keyboard = [[InlineKeyboardButton("⚙️ Setup Bot", callback_data="setup_github")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
             
             await update.message.reply_text(
                 "🤖 *Welcome to Enhanced Token Bot*\n\n"
                 "❌ *Bot not configured*\n\n"
-                "Please complete setup first to use the bot.\n"
-                "Use the button below or type /setup",
+                "Please complete setup first.",
                 reply_markup=reply_markup,
                 parse_mode='Markdown'
             )
             return
 
-        # Store admin chat ID if not set
         if not self.admin_chat_id:
             self.admin_chat_id = str(update.effective_user.id)
-            config_to_save = self.stored_config.copy()
-            config_to_save["admin_chat_id"] = self.admin_chat_id
-            self.config.save_config(config_to_save)
 
         keyboard = [
             [InlineKeyboardButton("📊 Status", callback_data="status")],
             [InlineKeyboardButton("🔄 Run Now", callback_data="run_now")],
-            [InlineKeyboardButton("⚙️ Settings", callback_data="settings")],
-            [InlineKeyboardButton("📋 Help", callback_data="help")]
+            [InlineKeyboardButton("⚙️ Settings", callback_data="settings")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        welcome_msg = f"""🎉 *Welcome to Enhanced Token Bot*
+        uptime = datetime.now(timezone.utc) - self.bot_start_time
+        welcome_msg = f"""🎉 *Enhanced Token Bot*
 
-🤖 *Current Status*: {'🟢 Active' if self.scheduler_running else '🔴 Inactive'}
+🤖 *Status*: {'🟢 Active' if self.scheduler_running else '🔴 Inactive'}
 📁 *Next File*: {self.account_files[self.current_file_index]}
-🔄 *Auto Cycle*: Every 8 hours
-📊 *Success Rate*: {self.total_successful_cycles}/{self.total_successful_cycles + self.total_failed_cycles} cycles
-
-Use buttons below or type /help for commands."""
+⏱️ *Uptime*: {str(uptime).split('.')[0]}
+📊 *Success*: {self.total_successful_cycles} cycles"""
 
         await update.message.reply_text(welcome_msg, reply_markup=reply_markup, parse_mode='Markdown')
 
     async def run_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Enhanced run command with progress indicator"""
         if not self.is_configured():
             await update.message.reply_text("❌ Bot not configured. Use /setup first.")
             return
             
-        await update.message.reply_text("🔄 *Processing next file...*\n⏳ Please wait...", parse_mode='Markdown')
+        await update.message.reply_text("🔄 *Processing...*", parse_mode='Markdown')
         result = await self.process_cycle(manual=True)
-
-        keyboard = [
-            [InlineKeyboardButton("📊 View Status", callback_data="status")],
-            [InlineKeyboardButton("📈 Statistics", callback_data="stats")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-
-        await update.message.reply_text(result, reply_markup=reply_markup)
+        await update.message.reply_text(result)
 
     async def status_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Enhanced status with system info"""
         current_file = self.account_files[self.current_file_index]
         uptime = datetime.now(timezone.utc) - self.bot_start_time
         
         total_cycles = self.total_successful_cycles + self.total_failed_cycles
         success_rate = (self.total_successful_cycles / max(1, total_cycles)) * 100
 
-        sys_stats = await self.get_system_stats()
-
-        status_msg = f"""📊 *Enhanced Bot Status*
+        status_msg = f"""📊 *Bot Status*
 
 🔄 *Scheduler*: {'🟢 Running' if self.scheduler_running else '🔴 Stopped'}
-📁 *Next File*: `{current_file}`
-⏰ *Last Run*: {self.last_run.strftime('%Y-%m-%d %H:%M:%S UTC') if self.last_run else 'Never'}
-⏰ *Next Run*: {self.next_run.strftime('%Y-%m-%d %H:%M:%S UTC') if self.next_run else 'Not scheduled'}
+📁 *Next File*: {current_file}
+⏰ *Last Run*: {self.last_run.strftime('%H:%M:%S UTC') if self.last_run else 'Never'}
+⏱️ *Uptime*: {str(uptime).split('.')[0]}
 
 📈 *Statistics*
 ✅ Successful: {self.total_successful_cycles}
 ❌ Failed: {self.total_failed_cycles}
-📊 Success Rate: {success_rate:.1f}%
-⏱️ Uptime: {sys_stats['uptime']}"""
+📊 Success Rate: {success_rate:.1f}%"""
 
-        keyboard = [
-            [InlineKeyboardButton("🔄 Refresh", callback_data="status")],
-            [InlineKeyboardButton("📈 Detailed Stats", callback_data="stats")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-
-        await update.message.reply_text(status_msg, reply_markup=reply_markup, parse_mode='Markdown')
+        await update.message.reply_text(status_msg, parse_mode='Markdown')
 
     async def setup_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Setup bot configuration through Telegram"""
         keyboard = [
             [InlineKeyboardButton("🐙 GitHub Config", callback_data="setup_github")],
             [InlineKeyboardButton("📊 Show Config", callback_data="show_config")],
@@ -385,48 +300,15 @@ Use buttons below or type /help for commands."""
         
         config_status = "✅ Configured" if self.is_configured() else "❌ Incomplete"
         
-        setup_msg = f"""⚙️ *Bot Setup & Configuration*
+        setup_msg = f"""⚙️ *Bot Setup*
 
-*Current Status*: {config_status}
+*Status*: {config_status}
 
-🤖 *Telegram Token*: {'✅ Set' if self.bot_token else '❌ Missing'}
+🤖 *Telegram*: {'✅ Set' if self.bot_token else '❌ Missing'}
 🐙 *GitHub Token*: {'✅ Set' if self.github_token else '❌ Missing'}  
-📁 *Repository*: {'✅ Set' if self.repo_name else '❌ Missing'}
-
-Choose what to configure:"""
+📁 *Repository*: {'✅ Set' if self.repo_name else '❌ Missing'}"""
         
         await update.message.reply_text(setup_msg, reply_markup=reply_markup, parse_mode='Markdown')
-
-    async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Enhanced help with categorized commands"""
-        help_text = """🤖 *Enhanced Token Bot - Command Reference*
-
-*🔄 Core Operations*
-/run - Process next JSON file immediately
-/status - Show detailed bot status
-/setup - Configure bot settings
-
-*⚙️ Control Commands*
-/pause - Pause/stop scheduler
-/resume - Resume scheduler
-
-*📊 Information*
-/config - Show current configuration
-/help - Show this help message
-
-*⏰ How It Works:*
-• 8-hour cycle: accounts1.json → accounts2.json → accounts3.json
-• Each cycle: Extract tokens → Update GitHub repo
-• Auto-recovery on failures
-• Real-time admin notifications"""
-
-        keyboard = [
-            [InlineKeyboardButton("📊 Status", callback_data="status")],
-            [InlineKeyboardButton("⚙️ Setup", callback_data="setup_github")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-
-        await update.message.reply_text(help_text, reply_markup=reply_markup, parse_mode='Markdown')
 
     async def pause_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         result = await self.stop_scheduler()
@@ -439,30 +321,9 @@ Choose what to configure:"""
         else:
             await update.message.reply_text("⚠️ Scheduler is already running")
 
-    async def config_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Show current configuration status"""
-        config_msg = f"""📋 *Current Configuration*
-
-🤖 *Telegram Bot*: {'✅ Connected' if self.bot_token else '❌ Not configured'}
-🐙 *GitHub Token*: {'✅ Set' if self.github_token else '❌ Missing'}
-📁 *Repository*: {self.repo_name if self.repo_name else '❌ Not set'}
-🌿 *Branch*: {self.branch}
-
-*Account Files*:
-• accounts1.json: {'✅' if os.path.exists('accounts1.json') else '❌'}
-• accounts2.json: {'✅' if os.path.exists('accounts2.json') else '❌'} 
-• accounts3.json: {'✅' if os.path.exists('accounts3.json') else '❌'}
-
-*Status*: {'🟢 Ready to run' if self.is_configured() else '🔴 Setup required'}
-
-Use /setup to configure missing items."""
-        
-        await update.message.reply_text(config_msg, parse_mode='Markdown')
-
     # ==================== SETUP HANDLERS ====================
 
     async def handle_setup_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle setup input messages"""
         user_id = str(update.effective_user.id)
         
         if user_id not in self.awaiting_setup:
@@ -474,12 +335,169 @@ Use /setup to configure missing items."""
         try:
             if setup_type == "github_token":
                 if not (user_input.startswith("ghp_") or user_input.startswith("github_pat_")):
-                    await update.message.reply_text("❌ Invalid GitHub token format!\nShould start with 'ghp_' or 'github_pat_'")
+                    await update.message.reply_text("❌ Invalid GitHub token format!")
                     return
                 
                 self.github_token = user_input
                 await update.message.reply_text("✅ *GitHub token saved!*", parse_mode='Markdown')
                 
             elif setup_type == "repo_name":
-                if "/" not in user_input or len(user_input.split("/")) != 2:
-                    await update.message.re
+                if "/" not in user_input:
+                    await update.message.reply_text("❌ Invalid format! Use: username/repository-name")
+                    return
+                
+                self.repo_name = user_input
+                await update.message.reply_text("✅ *Repository saved!*", parse_mode='Markdown')
+            
+            # Save configuration
+            config_to_save = {
+                "telegram_token": self.bot_token,
+                "github_token": self.github_token,
+                "repo_name": self.repo_name,
+                "branch": self.branch,
+                "admin_chat_id": self.admin_chat_id
+            }
+            
+            self.config.save_config(config_to_save)
+            self.update_github_env()
+            
+            del self.awaiting_setup[user_id]
+            
+            if self.is_configured():
+                await update.message.reply_text("🎉 *Bot configured successfully!*", parse_mode='Markdown')
+            
+        except Exception as e:
+            await update.message.reply_text(f"❌ Error: {str(e)}")
+
+    # ==================== CALLBACK HANDLERS ====================
+
+    async def button_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        query = update.callback_query
+        await query.answer()
+
+        if query.data == "setup_github":
+            keyboard = [
+                [InlineKeyboardButton("🔑 GitHub Token", callback_data="setup_github_token")],
+                [InlineKeyboardButton("📁 Repository", callback_data="setup_repo")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.edit_message_text(
+                "🐙 *GitHub Configuration*\n\n"
+                f"🔑 *Token*: {'✅ Set' if self.github_token else '❌ Missing'}\n"
+                f"📁 *Repo*: {self.repo_name if self.repo_name else '❌ Not set'}\n\n"
+                "Choose what to configure:",
+                reply_markup=reply_markup,
+                parse_mode='Markdown'
+            )
+            
+        elif query.data == "setup_github_token":
+            self.awaiting_setup[str(query.from_user.id)] = "github_token"
+            await query.edit_message_text(
+                "🔑 *GitHub Token Setup*\n\n"
+                "Send your GitHub Personal Access Token:\n"
+                "Format: `ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`",
+                parse_mode='Markdown'
+            )
+            
+        elif query.data == "setup_repo":
+            self.awaiting_setup[str(query.from_user.id)] = "repo_name"
+            await query.edit_message_text(
+                "📁 *Repository Setup*\n\n"
+                "Send repository name:\n"
+                "Format: `username/repository-name`\n"
+                "Example: `johndoe/token-storage`",
+                parse_mode='Markdown'
+            )
+
+        elif query.data == "show_config":
+            config_msg = f"""📊 *Current Configuration*
+
+🤖 *Telegram*: {'✅ Active' if self.bot_token else '❌ Missing'}
+🔑 *GitHub*: {'✅ Set' if self.github_token else '❌ Missing'}
+📁 *Repository*: {self.repo_name if self.repo_name else '❌ Not set'}
+🌿 *Branch*: {self.branch}
+
+*Status*: {'🟢 Ready' if self.is_configured() else '🔴 Setup needed'}"""
+            
+            await query.edit_message_text(config_msg, parse_mode='Markdown')
+
+        elif query.data == "test_setup":
+            if not self.is_configured():
+                await query.edit_message_text("❌ Setup incomplete")
+                return
+            
+            await query.edit_message_text("🔄 *Testing...*", parse_mode='Markdown')
+            
+            self.update_github_env()
+            try:
+                is_connected, message = validate_github_connection()
+                
+                if is_connected:
+                    test_msg = f"✅ *Setup Test Successful*\n\n{message}"
+                else:
+                    test_msg = f"❌ *Setup Test Failed*\n\n{message}"
+                    
+            except Exception as e:
+                test_msg = f"❌ *Test Error*\n\n{str(e)}"
+            
+            await query.edit_message_text(test_msg, parse_mode='Markdown')
+
+        elif query.data == "status":
+            current_file = self.account_files[self.current_file_index]
+            uptime = datetime.now(timezone.utc) - self.bot_start_time
+            
+            status_msg = f"""📊 *Quick Status*
+
+🔄 *Status*: {'🟢 Running' if self.scheduler_running else '🔴 Stopped'}
+📁 *Next*: {current_file}
+⏱️ *Uptime*: {str(uptime).split('.')[0]}
+✅ *Success*: {self.total_successful_cycles}
+❌ *Failed*: {self.total_failed_cycles}"""
+
+            await query.edit_message_text(status_msg, parse_mode='Markdown')
+
+        elif query.data == "run_now":
+            if not self.is_configured():
+                await query.edit_message_text("❌ Bot not configured")
+                return
+                
+            await query.edit_message_text("🔄 *Processing...*", parse_mode='Markdown')
+            result = await self.process_cycle(manual=True)
+            await query.edit_message_text(result)
+
+        elif query.data == "settings":
+            settings_msg = f"""⚙️ *Quick Settings*
+
+🔄 *Auto-Restart*: {'✅ On' if self.auto_restart_enabled else '❌ Off'}
+
+Use /setup for configuration options."""
+
+            await query.edit_message_text(settings_msg, parse_mode='Markdown')
+
+    # ==================== INITIALIZATION ====================
+
+    async def initialize(self):
+        if not self.bot_token:
+            print("❌ No Telegram bot token found!")
+            return False
+
+        self.application = Application.builder().token(self.bot_token).build()
+
+        # Add handlers
+        self.application.add_handler(CommandHandler("start", self.start_command))
+        self.application.add_handler(CommandHandler("setup", self.setup_command))
+        self.application.add_handler(CommandHandler("run", self.run_command))
+        self.application.add_handler(CommandHandler("status", self.status_command))
+        self.application.add_handler(CommandHandler("pause", self.pause_command))
+        self.application.add_handler(CommandHandler("resume", self.resume_command))
+        self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_setup_message))
+        self.application.add_handler(CallbackQueryHandler(self.button_callback))
+
+        await self.application.initialize()
+
+        if self.is_configured():
+            self.start_scheduler()
+            self.update_github_env()
+
+      
