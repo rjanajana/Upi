@@ -8,9 +8,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes, CallbackQuer
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 import logging
-import subprocess
 import base64
-import hashlib
 
 # Import your existing modules
 from gwt import process_json
@@ -287,7 +285,7 @@ class EnhancedTokenBot:
         """Enhanced start command with configuration check"""
         if not self.is_configured():
             keyboard = [
-                [InlineKeyboardButton("⚙️ Setup Bot", callback_data="setup_telegram")],
+                [InlineKeyboardButton("⚙️ Setup Bot", callback_data="setup_github")],
                 [InlineKeyboardButton("📋 Help", callback_data="help")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
@@ -337,7 +335,6 @@ Use buttons below or type /help for commands."""
         await update.message.reply_text("🔄 *Processing next file...*\n⏳ Please wait...", parse_mode='Markdown')
         result = await self.process_cycle(manual=True)
 
-        # Create inline keyboard for post-run actions
         keyboard = [
             [InlineKeyboardButton("📊 View Status", callback_data="status")],
             [InlineKeyboardButton("📈 Statistics", callback_data="stats")]
@@ -354,7 +351,6 @@ Use buttons below or type /help for commands."""
         total_cycles = self.total_successful_cycles + self.total_failed_cycles
         success_rate = (self.total_successful_cycles / max(1, total_cycles)) * 100
 
-        # Get system stats (basic version)
         sys_stats = await self.get_system_stats()
 
         status_msg = f"""📊 *Enhanced Bot Status*
@@ -413,7 +409,6 @@ Choose what to configure:"""
 *⚙️ Control Commands*
 /pause - Pause/stop scheduler
 /resume - Resume scheduler
-/restart - Restart entire bot
 
 *📊 Information*
 /config - Show current configuration
@@ -478,10 +473,13 @@ Use /setup to configure missing items."""
         
         try:
             if setup_type == "github_token":
-                # Validate GitHub token format
                 if not (user_input.startswith("ghp_") or user_input.startswith("github_pat_")):
                     await update.message.reply_text("❌ Invalid GitHub token format!\nShould start with 'ghp_' or 'github_pat_'")
                     return
                 
                 self.github_token = user_input
-                await update.message.reply_text("✅ *GitHub token saved
+                await update.message.reply_text("✅ *GitHub token saved!*", parse_mode='Markdown')
+                
+            elif setup_type == "repo_name":
+                if "/" not in user_input or len(user_input.split("/")) != 2:
+                    await update.message.re
