@@ -17,7 +17,6 @@ from github_update import push_to_github, validate_github_connection
 # Load environment variables
 load_dotenv()
 
-# Configure logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
@@ -302,7 +301,7 @@ class EnhancedTokenBot:
         else:
             await update.message.reply_text("⚠️ Scheduler is already running")
 
-    # Setup Handlers
+    # Setup & Button Handlers
     async def handle_setup_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = str(update.effective_user.id)
         
@@ -349,7 +348,6 @@ class EnhancedTokenBot:
         except Exception as e:
             await update.message.reply_text(f"❌ Error: {str(e)}")
 
-    # Button Handlers
     async def button_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
         await query.answer()
@@ -502,19 +500,4 @@ class EnhancedTokenBot:
 async def main():
     bot = None
     try:
-        bot = EnhancedTokenBot()
-        initialized = await bot.initialize()
-        
-        if initialized:
-            await bot.start_bot()
-        else:
-            print("❌ Bot initialization failed")
-            
-    except Exception as e:
-        logger.error(f"Bot error: {e}")
-    finally:
-        if bot:
-            await bot.cleanup()
-
-if __name__ == "__main__":
-    asyncio.run(main())
+        bot = Enh
