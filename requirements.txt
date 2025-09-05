@@ -1,24 +1,11 @@
-# Core Bot Dependencies
 python-telegram-bot==20.7
 apscheduler==3.10.4
 python-dotenv==1.0.0
-
-# HTTP and API
 requests==2.31.0
 urllib3==2.0.7
-
-# UI and Display
 rich==13.7.0
-
-# Date and Time
 pytz==2023.3
 tzdata==2023.3
-
-# JSON and Data Processing
 jsonschema==4.19.2
-
-# Logging and Debugging
 colorlog==6.8.0
-
-# Security and Environment
 cryptography==41.0.7
