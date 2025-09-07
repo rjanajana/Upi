@@ -122,37 +122,34 @@ class EnhancedTokenBot:
             except Exception as e:
                 logger.error(f"Failed to send admin notification: {e}")
 
-    # ==================== SCHEDULER FIX - 2 MINUTE TESTING ====================
+    # ==================== SCHEDULER FIX - 7 HOUR PRODUCTION ====================
     
     async def scheduled_job_wrapper(self):
-        """Wrapper for scheduled jobs - THIS IS THE KEY FIX"""
+        """Wrapper for scheduled jobs - PRODUCTION 7-HOUR"""
         try:
             logger.info(f"🕐 Scheduled job triggered at {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
-            await self.send_admin_notification("🕐 Automatic cycle started (2-minute test schedule)")
+            await self.send_admin_notification("🕐 Automatic cycle started (7-hour production schedule)")
             
             result = await self.process_cycle(manual=False)
             
             logger.info(f"🕐 Scheduled job completed: {result}")
             
             # Update next run time
-            self.next_run = datetime.now(timezone.utc) + timedelta(minutes=2)
+            self.next_run = datetime.now(timezone.utc) + timedelta(hours=7)
             
         except Exception as e:
             logger.error(f"Error in scheduled job: {e}")
             await self.send_admin_notification(f"🚨 Scheduled job error: {str(e)}", is_error=True)
 
-    def start_scheduler(self, interval_minutes=2):
-        """Fixed scheduler start method - 2 MINUTE TESTING"""
+    def start_scheduler(self, interval_hours=7):
+        """Production scheduler - 7 hours"""
         try:
             # Remove existing job if any
             if self.scheduler.get_job('token_cycle'):
                 logger.info("Removing existing scheduler job")
                 self.scheduler.remove_job('token_cycle')
 
-            # Convert minutes to hours for IntervalTrigger
-            interval_hours = interval_minutes / 60
-            
-            # Add new job with proper async wrapper
+            # Add new job with 7-hour interval
             self.scheduler.add_job(
                 func=self.scheduled_job_wrapper,  # Direct function reference
                 trigger=IntervalTrigger(hours=interval_hours),
@@ -160,7 +157,7 @@ class EnhancedTokenBot:
                 replace_existing=True,
                 max_instances=1  # Prevent overlapping jobs
             )
-            logger.info(f"✅ 🧪 TEST MODE: Scheduler job added with {interval_minutes} minute interval")
+            logger.info(f"✅ PRODUCTION MODE: Scheduler job added with {interval_hours} hour interval")
 
             # Start scheduler if not running
             if not self.scheduler.running:
@@ -168,11 +165,11 @@ class EnhancedTokenBot:
                 logger.info("✅ Scheduler started successfully")
 
             self.scheduler_running = True
-            self.next_run = datetime.now(timezone.utc) + timedelta(minutes=interval_minutes)
+            self.next_run = datetime.now(timezone.utc) + timedelta(hours=interval_hours)
             
             logger.info(f"🕐 Next automatic run scheduled at: {self.next_run.strftime('%Y-%m-%d %H:%M:%S UTC')}")
             
-            return f"✅ 🧪 TEST: Scheduler started with {interval_minutes} minute interval\n🕐 Next run: {self.next_run.strftime('%H:%M:%S UTC')}"
+            return f"✅ 🚀 PRODUCTION: Scheduler started with {interval_hours}h interval\n🕐 Next run: {self.next_run.strftime('%H:%M:%S UTC')}"
             
         except Exception as e:
             logger.error(f"Error starting scheduler: {e}")
@@ -228,7 +225,7 @@ class EnhancedTokenBot:
             current_file = self.account_files[self.current_file_index]
             start_time = datetime.now(timezone.utc)
             
-            logger.info(f"🔄 Starting cycle: {current_file} ({'Manual' if manual else 'Automatic - 2 min test'})")
+            logger.info(f"🔄 Starting cycle: {current_file} ({'Manual' if manual else 'Automatic - 7h production'})")
             
             # Create dummy file if not exists
             if not os.path.exists(current_file):
@@ -261,13 +258,13 @@ class EnhancedTokenBot:
             self.current_file_index = (self.current_file_index + 1) % len(self.account_files)
             self.total_successful_cycles += 1
 
-            success_msg = f"""✅ {'Manual' if manual else 'Automatic (2-min test)'} Cycle Completed
+            success_msg = f"""✅ {'Manual' if manual else 'Automatic (7-hour production)'} Cycle Completed
 📁 File: {current_file}
 🎯 Tokens Generated: {token_count}
 ⏱️ Processing Time: {processing_time:.2f}s
 🚀 GitHub: Updated
 📊 Total Success: {self.total_successful_cycles}
-🧪 Test Mode: 2-minute intervals"""
+🚀 Production Mode: 7-hour intervals"""
 
             if not manual:  # Only send notification for automatic runs
                 await self.send_admin_notification(success_msg)
@@ -277,7 +274,7 @@ class EnhancedTokenBot:
 
         except Exception as e:
             self.total_failed_cycles += 1
-            error_msg = f"❌ {'Manual' if manual else 'Automatic (2-min test)'} Cycle Failed\nError: {str(e)}"
+            error_msg = f"❌ {'Manual' if manual else 'Automatic (7-hour production)'} Cycle Failed\nError: {str(e)}"
             logger.error(f"Cycle failed: {e}")
             
             if not manual:  # Only send notification for automatic runs
@@ -308,25 +305,25 @@ class EnhancedTokenBot:
             [InlineKeyboardButton("📊 Status", callback_data="status")],
             [InlineKeyboardButton("🔄 Run Now", callback_data="run_now")],
             [InlineKeyboardButton("⚙️ Setup", callback_data="setup_github")],
-            [InlineKeyboardButton("🧪 Scheduler", callback_data="scheduler_status")]
+            [InlineKeyboardButton("🚀 Scheduler", callback_data="scheduler_status")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         uptime = datetime.now(timezone.utc) - self.bot_start_time
         scheduler_status = await self.get_scheduler_status()
         
-        welcome_msg = f"""🎉 *Enhanced Token Bot* 🧪
+        welcome_msg = f"""🎉 *Enhanced Token Bot* 🚀
 
 🤖 *Status*: {'🟢 Active' if self.scheduler_running else '🔴 Inactive'}
 📁 *Next File*: {self.account_files[self.current_file_index]}
 ⏱️ *Uptime*: {str(uptime).split('.')[0]}
 📊 *Success*: {self.total_successful_cycles} cycles
 
-🧪 *TEST MODE: 2-Minute Auto Scheduler*
+🚀 *PRODUCTION MODE: 7-Hour Auto Scheduler*
 🕐 *Auto Scheduler*: {'🟢 Running' if scheduler_status['running'] else '🔴 Stopped'}
 ⏰ *Next Auto Run*: {self.next_run.strftime('%H:%M:%S UTC') if self.next_run else 'Not scheduled'}
 
-*Note: Testing mode - runs every 2 minutes!*"""
+*Production mode - runs every 7 hours!*"""
 
         await update.message.reply_text(welcome_msg, reply_markup=reply_markup, parse_mode='Markdown')
 
@@ -347,14 +344,14 @@ class EnhancedTokenBot:
         total_cycles = self.total_successful_cycles + self.total_failed_cycles
         success_rate = (self.total_successful_cycles / max(1, total_cycles)) * 100
 
-        status_msg = f"""📊 *Detailed Bot Status* 🧪
+        status_msg = f"""📊 *Detailed Bot Status* 🚀
 
 🔄 *Manual Operations*: Available
 📁 *Next File*: {current_file}
 ⏰ *Last Run*: {self.last_run.strftime('%H:%M:%S UTC') if self.last_run else 'Never'}
 ⏱️ *Uptime*: {str(uptime).split('.')[0]}
 
-🧪 *TEST MODE: 2-Minute Auto Scheduler*
+🚀 *PRODUCTION MODE: 7-Hour Auto Scheduler*
 • Running: {'🟢 Yes' if scheduler_status['running'] else '🔴 No'}
 • Jobs: {scheduler_status['job_count']}
 • Next Run: {self.next_run.strftime('%Y-%m-%d %H:%M:%S UTC') if self.next_run else 'Not scheduled'}
@@ -364,11 +361,11 @@ class EnhancedTokenBot:
 ❌ Failed: {self.total_failed_cycles}
 📊 Success Rate: {success_rate:.1f}%
 
-⚠️ *Testing Mode Active - Runs every 2 minutes!*"""
+✅ *Production Mode Active - Runs every 7 hours!*"""
 
         keyboard = [
             [InlineKeyboardButton("🔄 Refresh", callback_data="status")],
-            [InlineKeyboardButton("🧪 Scheduler Info", callback_data="scheduler_status")]
+            [InlineKeyboardButton("🚀 Scheduler Info", callback_data="scheduler_status")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -385,25 +382,25 @@ class EnhancedTokenBot:
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        status_msg = f"""🧪 *TEST MODE: 2-Minute Scheduler Control*
+        status_msg = f"""🚀 *PRODUCTION MODE: 7-Hour Scheduler Control*
 
 *Current Status*: {'🟢 Running' if scheduler_status['running'] else '🔴 Stopped'}
 *Jobs Active*: {scheduler_status['job_count']}
 *Next Auto Run*: {self.next_run.strftime('%Y-%m-%d %H:%M:%S UTC') if self.next_run else 'Not scheduled'}
 
-*🧪 TEST MODE ACTIVE:*
-• Automatically processes tokens every 2 minutes
+*🚀 PRODUCTION MODE ACTIVE:*
+• Automatically processes tokens every 7 hours
 • Cycles through accounts1.json → accounts2.json → accounts3.json
 • Pushes results to GitHub repository
 • Sends notifications on completion
 
-*After testing, you can change back to 8 hours!*"""
+*Optimized for production use!*"""
 
         await update.message.reply_text(status_msg, reply_markup=reply_markup, parse_mode='Markdown')
 
     async def test_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Test scheduler manually"""
-        await update.message.reply_text("🧪 *Running scheduler test...*", parse_mode='Markdown')
+        await update.message.reply_text("🔄 *Running scheduler test...*", parse_mode='Markdown')
         
         try:
             await self.scheduled_job_wrapper()
@@ -489,7 +486,7 @@ class EnhancedTokenBot:
                 # Auto-start scheduler after configuration
                 if not self.scheduler_running:
                     result = self.start_scheduler()
-                    await update.message.reply_text(f"🧪 {result}")
+                    await update.message.reply_text(f"🚀 {result}")
             
         except Exception as e:
             await update.message.reply_text(f"❌ Error: {str(e)}")
@@ -572,16 +569,16 @@ class EnhancedTokenBot:
             uptime = datetime.now(timezone.utc) - self.bot_start_time
             scheduler_status = await self.get_scheduler_status()
             
-            status_msg = f"""📊 *Quick Status* 🧪
+            status_msg = f"""📊 *Quick Status* 🚀
 
 🔄 *Status*: {'🟢 Running' if scheduler_status['running'] else '🔴 Stopped'}
 📁 *Next*: {current_file}
 ⏱️ *Uptime*: {str(uptime).split('.')[0]}
 ✅ *Success*: {self.total_successful_cycles}
 ❌ *Failed*: {self.total_failed_cycles}
-🧪 *Next Auto*: {self.next_run.strftime('%H:%M UTC') if self.next_run else 'Not scheduled'}
+🚀 *Next Auto*: {self.next_run.strftime('%H:%M UTC') if self.next_run else 'Not scheduled'}
 
-*Test Mode: 2-minute intervals*"""
+*Production Mode: 7-hour intervals*"""
 
             await query.edit_message_text(status_msg, parse_mode='Markdown')
 
@@ -604,13 +601,13 @@ class EnhancedTokenBot:
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             
-            status_msg = f"""🧪 *2-Minute Test Scheduler Status*
+            status_msg = f"""🚀 *7-Hour Production Scheduler Status*
 
 *Running*: {'🟢 Yes' if scheduler_status['running'] else '🔴 No'}
 *Jobs*: {scheduler_status['job_count']}
 *Next Run*: {self.next_run.strftime('%Y-%m-%d %H:%M:%S UTC') if self.next_run else 'Not scheduled'}
 
-*🧪 TEST MODE: Every 2 minutes*"""
+*🚀 PRODUCTION MODE: Every 7 hours*"""
             
             await query.edit_message_text(status_msg, reply_markup=reply_markup, parse_mode='Markdown')
 
@@ -620,11 +617,11 @@ class EnhancedTokenBot:
                 return
             
             result = self.start_scheduler()
-            await query.edit_message_text(f"🧪 {result}")
+            await query.edit_message_text(f"🚀 {result}")
 
         elif query.data == "stop_scheduler":
             result = await self.stop_scheduler()
-            await query.edit_message_text(f"🧪 {result}")
+            await query.edit_message_text(f"🚀 {result}")
 
         elif query.data == "restart_scheduler":
             if not self.is_configured():
@@ -634,7 +631,7 @@ class EnhancedTokenBot:
             await self.stop_scheduler()
             await asyncio.sleep(1)
             result = self.start_scheduler()
-            await query.edit_message_text(f"🧪 Scheduler Restarted\n{result}")
+            await query.edit_message_text(f"🚀 Scheduler Restarted\n{result}")
 
     # ==================== INITIALIZATION ====================
     
@@ -666,7 +663,7 @@ class EnhancedTokenBot:
             self.update_github_env()
 
         if self.admin_chat_id:
-            await self.send_admin_notification("🚀 Bot started successfully with 2-minute test scheduler!")
+            await self.send_admin_notification("🚀 Bot started successfully with 7-hour production scheduler!")
 
         return True
 
