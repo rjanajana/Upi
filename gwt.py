@@ -14,7 +14,7 @@ from rich import box
 
 console = Console()
 
-API_URL = "http://narayan-gwt-token.vercel.app/token?uid={}&password={}"
+API_URL = "https://jwt-token-generateor.vercel.app/token?uid={}&password={}"
 
 # 🔧 FIXED SETTINGS FOR BETTER SUCCESS RATE
 MAX_RETRIES = 3          # Retry failed requests
